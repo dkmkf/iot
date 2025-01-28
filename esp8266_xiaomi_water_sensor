@@ -1,0 +1,43 @@
+#include <Arduino.h>
+
+#define SENSOR_PIN A0  // Аналоговый вход ESP8266
+
+byte Tray[] = {0xFA, 0x29, 0x03, 0x00, 0x00, 0x00, 0x00, 0x14, 0x9A, 0x00, 0x00, 0x00, 0x03, 0x77, 0x72, 0x71, 
+               0x03, 0x00, 0x6C, 0x4C, 0x3B, 0x03, 0x2F, 0x15, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x21, 
+               0x00, 0x00, 0x03, 0xE8, 0x00, 0x2C, 0x02, 0x6D, 0x37, 0xD2, 0x00};
+
+byte checksum;
+byte SensorMap;
+int SensorRaw;
+
+void setup() {
+    Serial.begin(115200);  // Скорость обмена (можно поменять на 9600)
+}
+
+void loop() {
+    SensorRaw = analogRead(SENSOR_PIN);  // Читаем аналоговый сигнал (0-1023)
+
+    // Если воды нет, ставим 125, иначе преобразуем данные в диапазон 0-120
+    if (SensorRaw < 3) 
+        SensorMap = 125;
+    else 
+        SensorMap = constrain(map(SensorRaw, 1023, 0, 0, 120), 0, 120);
+
+    Tray[11] = SensorMap;
+    checksum = 0;
+
+    for (int i = 0; i < 42; i++)
+        checksum ^= Tray[i];
+
+    checksum ^= 0xA0;
+    Tray[42] = checksum;
+
+    int e = sizeof(Tray);
+    for (int i = 0; i < e; i++)
+        Serial.write(Tray[i]);
+
+    Serial.print("SensorRaw: "); Serial.println(SensorRaw);
+    Serial.print("SensorMap: "); Serial.println(SensorMap);
+
+    delay(100);
+}
